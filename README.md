@@ -1,2 +1,189 @@
-# Network-Performance-Tweaks
-Network &amp; Performance Tweaks is a WordPress plugin that optimizes network requests and fine-tunes WordPress performance settings. It allows you to disable external dependencies like Google Fonts and Google Maps, control content management settings such as post revisions and trash retention, and adjust WordPress behavior for improved performance.
+# Network & Performance Tweaks
+
+**Version:** 1.0.0  
+**License:** GPL v2 or later
+
+## Description
+
+Network & Performance Tweaks is a WordPress plugin that optimizes network requests and fine-tunes WordPress performance settings. It allows you to disable external dependencies like Google Fonts and Google Maps, control content management settings such as post revisions and trash retention, and adjust WordPress behavior for improved performance.
+
+## Features
+
+### Network Optimizations
+
+- **Disable DNS Prefetching** - Removes DNS prefetch to fonts.googleapis.com and s.w.org to reduce external connections
+- **Disable Self Pingbacks** - Prevents WordPress from notifying itself when you link to your own posts
+- **Disable Google Maps API** - Removes Google Maps scripts loaded by themes or plugins
+- **Disable Google Fonts** - Removes Google Fonts loading from external servers
+
+### Content Management
+
+- **Post Revisions Limit** - Set maximum number of revisions to keep per post/page (0-100)
+- **Empty Trash Days** - Configure days before permanently deleting trashed items (0-365)
+- **Autosave Frequency** - Control how often WordPress automatically saves while editing (10-3600 seconds)
+- **Shortcode Cleanup** - Removes leftover shortcodes from deactivated plugins to clean up content display
+
+### Admin Performance
+
+- **Heartbeat Frequency** - Controls how often WordPress checks for updates and notifications in admin (15-300 seconds)
+
+### Data Management
+
+- **Custom Database Table** - Stores all settings in a dedicated table to avoid bloating wp_options
+- **Clean Uninstall** - User can choose whether to remove all data on uninstall
+
+## Installation
+
+1. Upload the `network-performance-tweaks` folder to `/wp-content/plugins/`
+2. Activate the plugin through the 'Plugins' menu in WordPress
+3. Navigate to **Tools → Network & Performance** to configure settings
+4. All features are disabled by default - enable the ones you need
+
+## Configuration
+
+Access the plugin settings via **Tools → Network & Performance** in the WordPress admin menu.
+
+### Settings Sections
+
+**Network Optimizations:**
+- Toggle individual network optimizations (DNS prefetch, self pingbacks, Google Maps, Google Fonts)
+
+**Content Management:**
+- Set numeric limits for revisions, trash retention, and autosave frequency
+- Enable shortcode cleanup
+
+**Admin Performance:**
+- Adjust WordPress heartbeat frequency
+
+**Uninstall Options:**
+- Choose whether to clean up all data on uninstall
+
+## Technical Details
+
+### WordPress APIs Used
+
+- **Plugin API** - Hook system for WordPress modifications
+- **Database API** - Secure data storage with prepared statements
+- **HTTP API** - Script/style dequeuing for Google services
+- **Shortcode API** - Cleanup of non-existent shortcodes
+- **Options API** - WordPress constants (WP_POST_REVISIONS, EMPTY_TRASH_DAYS, AUTOSAVE_INTERVAL)
+
+### Security Features
+
+- CSRF protection via WordPress nonces
+- Capability checks for admin access (`manage_options`)
+- Sanitized and validated input
+- Prepared SQL statements for database queries
+- XSS protection on output
+
+### Performance Considerations
+
+- Assets only load on plugin admin page
+- Settings cached in memory (lazy loading)
+- Minimal database queries
+- No external dependencies
+
+## File Structure
+
+```
+network-performance-tweaks/
+│
+├── network-performance-tweaks.php    # Main plugin file, initialization
+├── uninstall.php                      # Cleanup on plugin removal
+├── README.md                          # This file
+├── index.php                          # Security stub
+│
+├── includes/
+│   ├── class-database.php             # Database operations, settings storage
+│   ├── class-core.php                 # Core functionality, WordPress hooks
+│   ├── class-admin.php                # Admin interface, settings page
+│   └── index.php                      # Security stub
+│
+└── assets/
+    ├── admin.css                      # Admin page styling
+    └── index.php                      # Security stub
+```
+
+### File Descriptions
+
+**network-performance-tweaks.php**
+- Plugin header information
+- Constant definitions
+- File includes and initialization
+- Activation hook
+
+**includes/class-database.php**
+- Custom database table creation
+- Settings CRUD operations
+- Settings caching for performance
+- Table cleanup methods
+
+**includes/class-core.php**
+- Implements all performance tweaks
+- WordPress hook integrations
+- DNS prefetch control
+- Google services blocking
+- Shortcode cleanup
+- WordPress constants definition
+
+**includes/class-admin.php**
+- Admin menu registration (under Tools)
+- Settings page rendering
+- Form handling and validation
+- Asset enqueuing for admin pages
+
+**assets/admin.css**
+- Styling for settings page
+- Responsive design
+- WordPress admin theme consistency
+
+**uninstall.php**
+- Checks cleanup preference
+- Drops custom database table
+- Removes transients
+- Clears object cache
+
+## Browser Compatibility
+
+- All modern browsers (Chrome, Firefox, Safari, Edge)
+- Mobile responsive admin interface
+- WordPress 5.8+ compatible
+
+## Requirements
+
+- WordPress 5.8 or higher
+- PHP 7.4 or higher
+- MySQL 5.0 or higher
+
+## Privacy & Data
+
+This plugin:
+- Stores settings locally in WordPress database
+- Does not send data to external services
+- Does not use cookies or tracking
+- GDPR compliant
+
+## Performance Impact
+
+The plugin provides performance improvements by:
+- Reducing external HTTP requests
+- Limiting database bloat from revisions
+- Optimizing autosave and heartbeat frequencies
+- Removing unused shortcodes from content
+
+## Changelog
+
+### Version 1.0.0
+- Initial release
+- Network optimizations (DNS prefetch, self pingbacks, Google Maps, Google Fonts)
+- Content management settings (revisions, trash, autosave, shortcode cleanup)
+- Admin performance (heartbeat frequency)
+- Custom database table for settings
+- Clean uninstall option
+
+---
+
+**Plugin Version:** 1.0.0  
+**Requires WordPress:** 5.8+  
+**Requires PHP:** 7.4+  
+**License:** GPL v2 or later
