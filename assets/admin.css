@@ -1,0 +1,59 @@
+/**
+ * Admin styles for Network & Performance Tweaks
+ *
+ * @package NetworkPerformanceTweaks
+ * @since 1.0.0
+ */
+
+.form-table fieldset {
+	margin-bottom: 20px;
+}
+
+.form-table fieldset:last-child {
+	margin-bottom: 0;
+}
+
+.form-table fieldset label {
+	display: block;
+	margin-bottom: 5px;
+	font-weight: 500;
+}
+
+.form-table input[type="checkbox"] {
+	margin-right: 8px;
+}
+
+.form-table input[type="number"] {
+	width: 100px;
+}
+
+.form-table .description {
+	margin-top: 5px;
+	margin-bottom: 0;
+	color: #646970;
+	font-style: italic;
+}
+
+.form-table th {
+	width: 200px;
+	font-weight: 600;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+	.form-table th,
+	.form-table td {
+		display: block;
+		width: 100%;
+		padding: 10px;
+	}
+	
+	.form-table th {
+		padding-bottom: 5px;
+		border-bottom: 1px solid #dcdcde;
+	}
+	
+	.form-table td {
+		padding-top: 10px;
+	}
+}
