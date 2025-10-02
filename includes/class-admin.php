@@ -26,6 +26,13 @@ class NPT_Admin {
 	private $database;
 
 	/**
+	 * Admin page hook suffix
+	 *
+	 * @var string
+	 */
+	private $page_hook = 'tools_page_network-performance-tweaks';
+
+	/**
 	 * Constructor
 	 *
 	 * @param NPT_Database $database Database instance.
@@ -60,7 +67,7 @@ class NPT_Admin {
 	 * @return void
 	 */
 	public function enqueue_admin_assets( $hook ) {
-		if ( 'tools_page_network-performance-tweaks' !== $hook ) {
+		if ( $this->page_hook !== $hook ) {
 			return;
 		}
 		
@@ -78,18 +85,44 @@ class NPT_Admin {
 	 * @return void
 	 */
 	public function handle_form_submission() {
+		// Check if nonce field exists
 		if ( ! isset( $_POST['npt_settings_nonce'] ) ) {
 			return;
 		}
 		
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['npt_settings_nonce'] ) ), 'npt_save_settings' ) ) {
+		// Verify nonce with sanitization
+		$nonce = sanitize_text_field( wp_unslash( $_POST['npt_settings_nonce'] ) );
+		if ( ! wp_verify_nonce( $nonce, 'npt_save_settings' ) ) {
 			return;
 		}
 		
+		// Verify capability
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 		
+		// Save settings
+		$result = $this->save_settings();
+		
+		// Prepare redirect URL with status
+		$redirect_url = add_query_arg(
+			array(
+				'page' => 'network-performance-tweaks',
+				'npt_updated' => is_wp_error( $result ) ? '0' : '1',
+			),
+			admin_url( 'tools.php' )
+		);
+		
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Save settings with validation
+	 *
+	 * @return bool|WP_Error
+	 */
+	private function save_settings() {
 		// Checkboxes
 		$checkboxes = array(
 			'disable_dns_prefetch',
@@ -100,12 +133,18 @@ class NPT_Admin {
 			'cleanup_on_uninstall',
 		);
 		
+		$errors = array();
+		
 		foreach ( $checkboxes as $key ) {
 			$value = isset( $_POST[ $key ] ) ? '1' : '0';
-			$this->database->update_setting( $key, $value );
+			$result = $this->database->update_setting( $key, $value );
+			
+			if ( is_wp_error( $result ) ) {
+				$errors[] = $key . ': ' . $result->get_error_message();
+			}
 		}
 		
-		// Numeric fields
+		// Numeric fields with validation
 		$numeric_fields = array(
 			'post_revisions_limit' => array( 'min' => 0, 'max' => 100 ),
 			'empty_trash_days' => array( 'min' => 0, 'max' => 365 ),
@@ -117,13 +156,31 @@ class NPT_Admin {
 			if ( isset( $_POST[ $key ] ) ) {
 				$value = absint( $_POST[ $key ] );
 				if ( $value >= $limits['min'] && $value <= $limits['max'] ) {
-					$this->database->update_setting( $key, (string) $value );
+					$result = $this->database->update_setting( $key, (string) $value );
+					
+					if ( is_wp_error( $result ) ) {
+						$errors[] = $key . ': ' . $result->get_error_message();
+					}
+				} else {
+					$errors[] = sprintf(
+						'%s: Value must be between %d and %d',
+						$key,
+						$limits['min'],
+						$limits['max']
+					);
 				}
 			}
 		}
 		
-		wp_safe_redirect( add_query_arg( 'npt_updated', '1', wp_get_referer() ) );
-		exit;
+		if ( ! empty( $errors ) ) {
+			error_log( 'NPT: Errors saving settings - ' . implode( ', ', $errors ) );
+			return new WP_Error(
+				'save_error',
+				__( 'Some settings failed to save', 'network-performance-tweaks' )
+			);
+		}
+		
+		return true;
 	}
 
 	/**
@@ -132,18 +189,28 @@ class NPT_Admin {
 	 * @return void
 	 */
 	public function render_admin_page() {
+		// Verify capability
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
+			wp_die( esc_html__( 'Unauthorized access', 'network-performance-tweaks' ) );
 		}
 		
-		$updated = isset( $_GET['npt_updated'] ) && '1' === $_GET['npt_updated'];
+		// Sanitize GET parameter
+		$updated = '0';
+		if ( isset( $_GET['npt_updated'] ) ) {
+			$updated = sanitize_text_field( wp_unslash( $_GET['npt_updated'] ) );
+		}
+		
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Network & Performance Tweaks', 'network-performance-tweaks' ); ?></h1>
 			
-			<?php if ( $updated ) : ?>
+			<?php if ( '1' === $updated ) : ?>
 				<div class="notice notice-success is-dismissible">
 					<p><?php esc_html_e( 'Settings saved successfully.', 'network-performance-tweaks' ); ?></p>
+				</div>
+			<?php elseif ( '0' === $updated && isset( $_GET['npt_updated'] ) ) : ?>
+				<div class="notice notice-error is-dismissible">
+					<p><?php esc_html_e( 'Failed to save some settings. Please try again.', 'network-performance-tweaks' ); ?></p>
 				</div>
 			<?php endif; ?>
 			
