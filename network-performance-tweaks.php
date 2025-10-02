@@ -26,26 +26,31 @@ require_once NPT_DIR . 'includes/class-database.php';
 require_once NPT_DIR . 'includes/class-core.php';
 require_once NPT_DIR . 'includes/class-admin.php';
 
+// Define WordPress constants early (before WordPress fully initializes)
+// These must be defined BEFORE plugins_loaded for WordPress to use them
+$npt_db_early = new NPT_Database();
+
+$revisions = $npt_db_early->get_setting( 'post_revisions_limit', '5' );
+if ( ! defined( 'WP_POST_REVISIONS' ) && is_numeric( $revisions ) ) {
+	define( 'WP_POST_REVISIONS', (int) $revisions );
+}
+
+$trash_days = $npt_db_early->get_setting( 'empty_trash_days', '30' );
+if ( ! defined( 'EMPTY_TRASH_DAYS' ) && is_numeric( $trash_days ) ) {
+	define( 'EMPTY_TRASH_DAYS', (int) $trash_days );
+}
+
+$autosave = $npt_db_early->get_setting( 'autosave_frequency', '60' );
+if ( ! defined( 'AUTOSAVE_INTERVAL' ) && is_numeric( $autosave ) ) {
+	define( 'AUTOSAVE_INTERVAL', (int) $autosave );
+}
+
 // Initialize plugin
 function npt_init() {
-	// Error handling for class loading
-	if ( ! class_exists( 'NPT_Database' ) || ! class_exists( 'NPT_Core' ) ) {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'NPT: Failed to load required classes' );
-		}
-		return;
-	}
-	
 	$database = new NPT_Database();
 	$core = new NPT_Core( $database );
 	
 	if ( is_admin() ) {
-		if ( ! class_exists( 'NPT_Admin' ) ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'NPT: Failed to load admin class' );
-			}
-			return;
-		}
 		$admin = new NPT_Admin( $database );
 	}
 }
@@ -53,27 +58,8 @@ add_action( 'plugins_loaded', 'npt_init' );
 
 // Activation hook
 function npt_activate() {
-	if ( ! class_exists( 'NPT_Database' ) ) {
-		wp_die( esc_html__( 'Failed to activate plugin: Database class not found', 'network-performance-tweaks' ) );
-	}
-	
 	$database = new NPT_Database();
-	$result = $database->create_table();
-	
-	if ( is_wp_error( $result ) ) {
-		wp_die( esc_html( $result->get_error_message() ) );
-	}
-	
+	$database->create_table();
 	$database->initialize_defaults();
 }
 register_activation_hook( __FILE__, 'npt_activate' );
-
-// Deactivation hook
-function npt_deactivate() {
-	// Clear transients
-	delete_transient( 'npt_settings_cache' );
-	
-	// Clear object cache
-	wp_cache_flush();
-}
-register_deactivation_hook( __FILE__, 'npt_deactivate' );
