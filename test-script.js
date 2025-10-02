@@ -6,14 +6,11 @@
  * 2. Open Developer Console (F12)
  * 3. Paste this entire script and press Enter
  * 4. Review the detailed test results
- * 
- * Note: Some tests require specific plugin settings to be enabled
  */
 
 (function() {
     'use strict';
     
-    // Test results storage
     const results = {
         passed: [],
         failed: [],
@@ -21,7 +18,6 @@
         info: []
     };
     
-    // Styling for console output
     const styles = {
         title: 'font-size: 18px; font-weight: bold; color: #2271b1; padding: 10px 0;',
         pass: 'color: #00a32a; font-weight: bold;',
@@ -35,12 +31,9 @@
     console.log('%cTesting plugin functionality...', styles.info);
     console.log('─────────────────────────────────────────────────────────');
     
-    // =====================================================================
-    // TEST 1: DNS Prefetch Disabled
-    // =====================================================================
+    // TEST 1: DNS Prefetch
     console.log('%c\n📡 TEST 1: DNS Prefetch Settings', styles.section);
     
-    // Check for dns-prefetch-control meta tag
     const dnsPrefetchMeta = document.querySelector('meta[http-equiv="x-dns-prefetch-control"]');
     if (dnsPrefetchMeta && dnsPrefetchMeta.getAttribute('content') === 'off') {
         results.passed.push('✓ DNS prefetch control meta tag present and set to "off"');
@@ -50,7 +43,6 @@
         console.log('%c  ✗ DNS prefetch control meta tag not found', styles.fail);
     }
     
-    // Check for any dns-prefetch link tags
     const dnsPrefetchLinks = document.querySelectorAll('link[rel="dns-prefetch"]');
     if (dnsPrefetchLinks.length === 0) {
         results.passed.push('✓ No DNS prefetch link tags found');
@@ -63,12 +55,9 @@
         });
     }
     
-    // =====================================================================
-    // TEST 2: Google Fonts Disabled
-    // =====================================================================
+    // TEST 2: Google Fonts
     console.log('%c\n🔤 TEST 2: Google Fonts', styles.section);
     
-    // Check stylesheets
     const googleFontsStyles = Array.from(document.styleSheets).filter(sheet => {
         try {
             return sheet.href && sheet.href.includes('fonts.googleapis.com');
@@ -88,7 +77,6 @@
         });
     }
     
-    // Check link tags
     const googleFontsLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
     if (googleFontsLinks.length > 0) {
         results.warnings.push(`⚠ Found ${googleFontsLinks.length} Google Fonts link tag(s)`);
@@ -98,9 +86,7 @@
         });
     }
     
-    // =====================================================================
-    // TEST 3: Google Maps Disabled
-    // =====================================================================
+    // TEST 3: Google Maps
     console.log('%c\n🗺️ TEST 3: Google Maps API', styles.section);
     
     const googleMapsScripts = Array.from(document.scripts).filter(script => {
@@ -121,132 +107,8 @@
         });
     }
     
-    // =====================================================================
-    // TEST 4: Script/Style Version Parameters
-    // =====================================================================
-    console.log('%c\n🔢 TEST 4: Script/Style Version Parameters', styles.section);
-    
-    // Check scripts
-    const scriptsWithVer = Array.from(document.scripts).filter(script => {
-        return script.src && script.src.includes('?ver=');
-    });
-    
-    // Check stylesheets
-    const stylesWithVer = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(link => {
-        return link.href && link.href.includes('?ver=');
-    });
-    
-    const totalWithVer = scriptsWithVer.length + stylesWithVer.length;
-    
-    if (totalWithVer === 0) {
-        results.passed.push('✓ All version parameters removed from scripts/styles');
-        console.log('%c  ✓ No version parameters found', styles.pass);
-    } else {
-        results.info.push(`ℹ Found ${scriptsWithVer.length} scripts and ${stylesWithVer.length} styles with version parameters`);
-        console.log('%c  ℹ Version parameters found (expected if setting disabled):', styles.info);
-        console.log(`    - ${scriptsWithVer.length} scripts with ?ver=`);
-        console.log(`    - ${stylesWithVer.length} styles with ?ver=`);
-    }
-    
-    // =====================================================================
-    // TEST 5: WordPress Version Hidden
-    // =====================================================================
-    console.log('%c\n🔒 TEST 5: WordPress Version Disclosure', styles.section);
-    
-    const generatorMeta = document.querySelector('meta[name="generator"]');
-    if (!generatorMeta || !generatorMeta.content.includes('WordPress')) {
-        results.passed.push('✓ WordPress version not disclosed in meta tags');
-        console.log('%c  ✓ Generator meta tag removed/hidden', styles.pass);
-    } else {
-        results.failed.push('✗ WordPress version exposed in generator meta tag');
-        console.log('%c  ✗ Generator meta tag still present:', styles.fail);
-        console.log('    - ' + generatorMeta.content);
-    }
-    
-    // =====================================================================
-    // TEST 6: RSS Feed Links
-    // =====================================================================
-    console.log('%c\n📰 TEST 6: RSS Feed Links', styles.section);
-    
-    const feedLinks = document.querySelectorAll('link[type="application/rss+xml"], link[type="application/atom+xml"]');
-    
-    if (feedLinks.length === 0) {
-        results.passed.push('✓ No RSS feed links found');
-        console.log('%c  ✓ RSS feed links removed', styles.pass);
-    } else {
-        results.info.push(`ℹ Found ${feedLinks.length} RSS feed link(s)`);
-        console.log('%c  ℹ RSS feed links present (expected if setting disabled):', styles.info);
-        feedLinks.forEach(link => {
-            console.log('    - ' + link.title + ' (' + link.href + ')');
-        });
-    }
-    
-    // =====================================================================
-    // TEST 7: Additional Meta Tags (RSD, WLW)
-    // =====================================================================
-    console.log('%c\n🏷️ TEST 7: Discovery Meta Tags', styles.section);
-    
-    const rsdLink = document.querySelector('link[rel="EditURI"]');
-    const wlwLink = document.querySelector('link[rel="wlwmanifest"]');
-    
-    let discoveryTagsFound = 0;
-    
-    if (!rsdLink) {
-        results.passed.push('✓ RSD link removed');
-        console.log('%c  ✓ RSD (EditURI) link not found', styles.pass);
-    } else {
-        results.info.push('ℹ RSD link present');
-        console.log('%c  ℹ RSD link found:', styles.info);
-        console.log('    - ' + rsdLink.href);
-        discoveryTagsFound++;
-    }
-    
-    if (!wlwLink) {
-        results.passed.push('✓ Windows Live Writer manifest removed');
-        console.log('%c  ✓ WLW manifest not found', styles.pass);
-    } else {
-        results.info.push('ℹ Windows Live Writer manifest present');
-        console.log('%c  ℹ WLW manifest found:', styles.info);
-        console.log('    - ' + wlwLink.href);
-        discoveryTagsFound++;
-    }
-    
-    // =====================================================================
-    // TEST 8: REST API Links
-    // =====================================================================
-    console.log('%c\n🔌 TEST 8: REST API Discovery', styles.section);
-    
-    const restApiLink = document.querySelector('link[rel="https://api.w.org/"]');
-    
-    if (!restApiLink) {
-        results.info.push('ℹ REST API link not found in head');
-        console.log('%c  ℹ REST API link removed from head', styles.info);
-    } else {
-        results.info.push('ℹ REST API link present in head');
-        console.log('%c  ℹ REST API link found:', styles.info);
-        console.log('    - ' + restApiLink.href);
-    }
-    
-    // =====================================================================
-    // TEST 9: Shortlink
-    // =====================================================================
-    console.log('%c\n🔗 TEST 9: Shortlink Tag', styles.section);
-    
-    const shortlink = document.querySelector('link[rel="shortlink"]');
-    
-    if (!shortlink) {
-        results.info.push('ℹ Shortlink tag not found');
-        console.log('%c  ℹ Shortlink tag not present', styles.info);
-    } else {
-        results.info.push('ℹ Shortlink tag present');
-        console.log('%c  ℹ Shortlink found:', styles.info);
-        console.log('    - ' + shortlink.href);
-    }
-    
-    // =====================================================================
-    // TEST 10: Check for External Resources
-    // =====================================================================
-    console.log('%c\n🌐 TEST 10: External Resources Summary', styles.section);
+    // TEST 4: External Resources Summary
+    console.log('%c\n🌐 TEST 4: External Resources Summary', styles.section);
     
     const allScripts = Array.from(document.scripts);
     const allStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
@@ -281,27 +143,60 @@
     
     if (externalScripts.length > 0) {
         console.log(`\n  External Scripts:`);
+        const externalDomains = {};
         externalScripts.forEach(script => {
             try {
                 const url = new URL(script.src);
-                console.log(`    - ${url.hostname}`);
+                externalDomains[url.hostname] = (externalDomains[url.hostname] || 0) + 1;
             } catch(e) {}
+        });
+        Object.keys(externalDomains).forEach(domain => {
+            console.log(`    - ${domain} (${externalDomains[domain]} script${externalDomains[domain] > 1 ? 's' : ''})`);
         });
     }
     
     if (externalStyles.length > 0) {
         console.log(`\n  External Stylesheets:`);
+        const externalStyleDomains = {};
         externalStyles.forEach(link => {
             try {
                 const url = new URL(link.href);
-                console.log(`    - ${url.hostname}`);
+                externalStyleDomains[url.hostname] = (externalStyleDomains[url.hostname] || 0) + 1;
             } catch(e) {}
+        });
+        Object.keys(externalStyleDomains).forEach(domain => {
+            console.log(`    - ${domain} (${externalStyleDomains[domain]} stylesheet${externalStyleDomains[domain] > 1 ? 's' : ''})`);
         });
     }
     
-    // =====================================================================
+    // TEST 5: Shortcode Cleanup (Frontend)
+    console.log('%c\n📝 TEST 5: Shortcode Cleanup', styles.section);
+    
+    const postContent = document.querySelector('.entry-content, .post-content, article .content, main article');
+    if (postContent) {
+        const shortcodePattern = /\[([^\]]+)\]/g;
+        const foundShortcodes = postContent.innerText.match(shortcodePattern);
+        
+        if (foundShortcodes && foundShortcodes.length > 0) {
+            results.info.push(`ℹ Found ${foundShortcodes.length} potential shortcode(s) in content`);
+            console.log('%c  ℹ Shortcodes found in content:', styles.info);
+            foundShortcodes.slice(0, 5).forEach(sc => {
+                console.log('    - ' + sc);
+            });
+            if (foundShortcodes.length > 5) {
+                console.log(`    ... and ${foundShortcodes.length - 5} more`);
+            }
+            console.log('  ⚠ If these are from deactivated plugins, shortcode cleanup may not be enabled');
+        } else {
+            results.passed.push('✓ No leftover shortcodes detected in content');
+            console.log('%c  ✓ No shortcodes found in content', styles.pass);
+        }
+    } else {
+        results.info.push('ℹ Could not find post content area to check for shortcodes');
+        console.log('%c  ℹ Could not locate post content area', styles.info);
+    }
+    
     // FINAL SUMMARY
-    // =====================================================================
     console.log('%c\n═══════════════════════════════════════════════════════', styles.section);
     console.log('%c📊 TEST SUMMARY', styles.title);
     console.log('%c═══════════════════════════════════════════════════════', styles.section);
@@ -324,56 +219,57 @@
         results.info.forEach(msg => console.log(`  ${msg}`));
     }
     
-    // =====================================================================
     // MANUAL TESTING INSTRUCTIONS
-    // =====================================================================
     console.log('%c\n═══════════════════════════════════════════════════════', styles.section);
     console.log('%c🔍 MANUAL TESTS REQUIRED', styles.title);
     console.log('%c═══════════════════════════════════════════════════════', styles.section);
     
     console.log(`%c
-The following settings require manual verification:
+The following settings require manual verification in WordPress admin:
 
 1. POST REVISIONS LIMIT
    - Go to Posts → Edit any post
    - Make 10+ changes and save each time
-   - Check: Tools → Revisions (should show only your configured limit)
+   - Go to post editor → Click "Revisions" in right sidebar
+   - Count: Should show only your configured limit (default: 5)
 
 2. EMPTY TRASH DAYS
    - Trash a post
-   - Check database or wait for configured days
-   - Verify: Post is permanently deleted after X days
+   - Check database table wp_posts for _wp_trash_meta_time
+   - Or wait for configured days and verify permanent deletion
 
 3. AUTOSAVE FREQUENCY
    - Edit a post and stop typing
-   - Watch for autosave notifications
-   - Check: Should autosave at your configured interval (default 60s)
+   - Watch bottom left for "Draft saved at [time]"
+   - Time between autosaves should match your setting (default: 60s)
 
 4. SELF PINGBACKS
-   - Create a post with a link to another post on your site
-   - Check: No pingback notification should appear
+   - Create a new post with a link to another post on your site
+   - Publish and check Comments section
+   - Should NOT see a pingback notification
 
-5. SHORTCODE CLEANUP
-   - Add content with a fake shortcode like [nonexistent]
-   - View the post on frontend
-   - Check: Shortcode should be removed if cleanup is enabled
+5. HEARTBEAT FREQUENCY (Admin Area Test)
+   - Open admin area and open DevTools → Network tab
+   - Filter by "heartbeat" or look for admin-ajax.php
+   - Watch the timing between heartbeat requests
+   - Should match your configured interval (default: 60s)
 
-6. HEARTBEAT FREQUENCY
-   - Open browser DevTools → Network tab
-   - Stay on WordPress admin for 2+ minutes
-   - Check: /admin-ajax.php?action=heartbeat calls at your interval
-
-7. DATABASE TABLE
+6. DATABASE TABLE
    - Check phpMyAdmin or similar
    - Look for: wp_npt_settings table
-   - Should contain: All your plugin settings
+   - Should contain: All your plugin settings as rows
+
+7. WORDPRESS CONSTANTS
+   - Install "Query Monitor" plugin
+   - Check Constants section
+   - Look for: WP_POST_REVISIONS, EMPTY_TRASH_DAYS, AUTOSAVE_INTERVAL
+   - Values should match your plugin settings
 `, styles.info);
     
     console.log('%c\n═══════════════════════════════════════════════════════', styles.section);
-    console.log('%c✅ TESTING COMPLETE', styles.title);
+    console.log('%c✅ FRONTEND TESTING COMPLETE', styles.title);
     console.log('%c═══════════════════════════════════════════════════════\n', styles.section);
     
-    // Return summary object for programmatic access
     return {
         passed: results.passed.length,
         failed: results.failed.length,
