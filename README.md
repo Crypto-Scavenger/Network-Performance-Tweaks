@@ -1,6 +1,6 @@
 # Network & Performance Tweaks
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **License:** GPL v2 or later
 
 ## Description
@@ -82,6 +82,7 @@ Access the plugin settings via **Tools → Network & Performance** in the WordPr
 - Settings cached in memory (lazy loading)
 - Minimal database queries
 - No external dependencies
+- WordPress constants defined early for immediate effect
 
 ## File Structure
 
@@ -110,21 +111,22 @@ network-performance-tweaks/
 - Plugin header information
 - Constant definitions
 - File includes and initialization
+- WordPress constants (WP_POST_REVISIONS, etc.) defined immediately
 - Activation hook
 
 **includes/class-database.php**
-- Custom database table creation
-- Settings CRUD operations
+- Custom database table creation using %i placeholder (WordPress 6.2+)
+- Settings CRUD operations with error handling
 - Settings caching for performance
 - Table cleanup methods
 
 **includes/class-core.php**
 - Implements all performance tweaks
-- WordPress hook integrations
+- WordPress hook integrations with lazy loading
 - DNS prefetch control
 - Google services blocking
 - Shortcode cleanup
-- WordPress constants definition
+- Heartbeat frequency adjustment
 
 **includes/class-admin.php**
 - Admin menu registration (under Tools)
@@ -139,8 +141,8 @@ network-performance-tweaks/
 
 **uninstall.php**
 - Checks cleanup preference
-- Drops custom database table
-- Removes transients
+- Drops custom database table with error handling
+- Removes transients with prepared statements
 - Clears object cache
 
 ## Browser Compatibility
@@ -173,6 +175,13 @@ The plugin provides performance improvements by:
 
 ## Changelog
 
+### Version 1.0.1 (2025-10-02)
+- **CRITICAL FIX**: WordPress constants (WP_POST_REVISIONS, EMPTY_TRASH_DAYS, AUTOSAVE_INTERVAL) now defined immediately on plugin load instead of plugins_loaded hook
+- **PERFORMANCE FIX**: Implemented lazy loading pattern in Core class - settings only loaded when hooks actually fire instead of on every page load
+- **SECURITY FIX**: Added proper error handling for all database operations with error_log()
+- **COMPATIBILITY FIX**: Updated to use %i placeholder for table names (WordPress 6.2+)
+- All 9 features now work correctly (revisions, trash, and autosave were broken in 1.0.0)
+
 ### Version 1.0.0
 - Initial release
 - Network optimizations (DNS prefetch, self pingbacks, Google Maps, Google Fonts)
@@ -183,7 +192,7 @@ The plugin provides performance improvements by:
 
 ---
 
-**Plugin Version:** 1.0.0  
+**Plugin Version:** 1.0.1  
 **Requires WordPress:** 5.8+  
 **Requires PHP:** 7.4+  
 **License:** GPL v2 or later
