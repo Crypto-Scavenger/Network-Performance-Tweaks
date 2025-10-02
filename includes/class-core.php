@@ -26,6 +26,13 @@ class NPT_Core {
 	private $database;
 
 	/**
+	 * Settings cache (lazy loaded)
+	 *
+	 * @var array|null
+	 */
+	private $settings = null;
+
+	/**
 	 * Constructor
 	 *
 	 * @param NPT_Database $database Database instance.
@@ -36,64 +43,114 @@ class NPT_Core {
 	}
 
 	/**
+	 * Get settings with lazy loading
+	 *
+	 * @return array Settings array
+	 */
+	private function get_settings() {
+		if ( null === $this->settings ) {
+			$this->settings = array(
+				'disable_dns_prefetch'      => $this->database->get_setting( 'disable_dns_prefetch', '0' ),
+				'disable_self_pingbacks'    => $this->database->get_setting( 'disable_self_pingbacks', '0' ),
+				'disable_google_maps'       => $this->database->get_setting( 'disable_google_maps', '0' ),
+				'disable_google_fonts'      => $this->database->get_setting( 'disable_google_fonts', '0' ),
+				'enable_shortcode_cleanup'  => $this->database->get_setting( 'enable_shortcode_cleanup', '0' ),
+				'heartbeat_frequency'       => $this->database->get_setting( 'heartbeat_frequency', '60' ),
+			);
+		}
+		return $this->settings;
+	}
+
+	/**
 	 * Initialize hooks
 	 *
 	 * @return void
 	 */
 	private function init_hooks() {
-		// DNS Prefetching
-		if ( '1' === $this->database->get_setting( 'disable_dns_prefetch' ) ) {
+		// Lazy load settings only when hooks actually fire
+		add_action( 'init', array( $this, 'apply_dns_prefetch' ), 1 );
+		add_action( 'pre_ping', array( $this, 'apply_self_pingbacks' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'apply_google_blocks' ), 99 );
+		add_filter( 'the_content', array( $this, 'apply_shortcode_cleanup' ) );
+		add_filter( 'heartbeat_settings', array( $this, 'apply_heartbeat' ) );
+	}
+
+	/**
+	 * Apply DNS prefetch settings
+	 *
+	 * @return void
+	 */
+	public function apply_dns_prefetch() {
+		$settings = $this->get_settings();
+		
+		if ( '1' === $settings['disable_dns_prefetch'] ) {
 			add_filter( 'wp_resource_hints', array( $this, 'disable_dns_prefetch' ), 10, 2 );
 			add_action( 'wp_head', array( $this, 'remove_dns_prefetch_meta' ), 0 );
 		}
+	}
 
-		// Self Pingbacks
-		if ( '1' === $this->database->get_setting( 'disable_self_pingbacks' ) ) {
-			add_action( 'pre_ping', array( $this, 'disable_self_pingbacks' ) );
+	/**
+	 * Apply self pingback settings
+	 *
+	 * @param array $links Links to ping.
+	 * @return void
+	 */
+	public function apply_self_pingbacks( &$links ) {
+		$settings = $this->get_settings();
+		
+		if ( '1' === $settings['disable_self_pingbacks'] ) {
+			$this->disable_self_pingbacks( $links );
 		}
+	}
 
-		// Google Maps
-		if ( '1' === $this->database->get_setting( 'disable_google_maps' ) ) {
-			add_action( 'wp_enqueue_scripts', array( $this, 'disable_google_maps' ), 99 );
+	/**
+	 * Apply Google service blocks
+	 *
+	 * @return void
+	 */
+	public function apply_google_blocks() {
+		$settings = $this->get_settings();
+		
+		if ( '1' === $settings['disable_google_maps'] ) {
+			$this->disable_google_maps();
 		}
-
-		// Google Fonts
-		if ( '1' === $this->database->get_setting( 'disable_google_fonts' ) ) {
-			add_action( 'wp_enqueue_scripts', array( $this, 'disable_google_fonts' ), 99 );
+		
+		if ( '1' === $settings['disable_google_fonts'] ) {
+			$this->disable_google_fonts();
 			add_filter( 'style_loader_tag', array( $this, 'filter_google_fonts' ), 10, 2 );
 		}
+	}
 
-		// Post Revisions
-		$revisions = $this->database->get_setting( 'post_revisions_limit', '5' );
-		if ( ! defined( 'WP_POST_REVISIONS' ) && is_numeric( $revisions ) ) {
-			define( 'WP_POST_REVISIONS', (int) $revisions );
+	/**
+	 * Apply shortcode cleanup
+	 *
+	 * @param string $content Post content.
+	 * @return string
+	 */
+	public function apply_shortcode_cleanup( $content ) {
+		$settings = $this->get_settings();
+		
+		if ( '1' === $settings['enable_shortcode_cleanup'] ) {
+			return $this->clean_shortcodes( $content );
 		}
+		
+		return $content;
+	}
 
-		// Empty Trash Days
-		$trash_days = $this->database->get_setting( 'empty_trash_days', '30' );
-		if ( ! defined( 'EMPTY_TRASH_DAYS' ) && is_numeric( $trash_days ) ) {
-			define( 'EMPTY_TRASH_DAYS', (int) $trash_days );
+	/**
+	 * Apply heartbeat settings
+	 *
+	 * @param array $settings Heartbeat settings.
+	 * @return array
+	 */
+	public function apply_heartbeat( $settings ) {
+		$plugin_settings = $this->get_settings();
+		
+		if ( is_numeric( $plugin_settings['heartbeat_frequency'] ) ) {
+			$settings['interval'] = (int) $plugin_settings['heartbeat_frequency'];
 		}
-
-		// Autosave Frequency
-		$autosave = $this->database->get_setting( 'autosave_frequency', '60' );
-		if ( ! defined( 'AUTOSAVE_INTERVAL' ) && is_numeric( $autosave ) ) {
-			define( 'AUTOSAVE_INTERVAL', (int) $autosave );
-		}
-
-		// Shortcode Cleanup
-		if ( '1' === $this->database->get_setting( 'enable_shortcode_cleanup' ) ) {
-			add_filter( 'the_content', array( $this, 'clean_shortcodes' ) );
-		}
-
-		// Heartbeat Frequency
-		$heartbeat = $this->database->get_setting( 'heartbeat_frequency', '60' );
-		if ( is_numeric( $heartbeat ) ) {
-			add_filter( 'heartbeat_settings', function( $settings ) use ( $heartbeat ) {
-				$settings['interval'] = (int) $heartbeat;
-				return $settings;
-			} );
-		}
+		
+		return $settings;
 	}
 
 	/**
