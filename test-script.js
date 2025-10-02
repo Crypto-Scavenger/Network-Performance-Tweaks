@@ -1,192 +1,384 @@
 /**
- * API & Discovery Plugin Feature Test Script
- * Paste this in browser console to test if plugin features work
+ * Network & Performance Tweaks - Browser Console Test Script
  * 
- * Usage: Just paste and press Enter. Results will show in console.
+ * Instructions:
+ * 1. Open your WordPress site in browser
+ * 2. Open Developer Console (F12)
+ * 3. Paste this entire script and press Enter
+ * 4. Review the detailed test results
+ * 
+ * Note: Some tests require specific plugin settings to be enabled
  */
 
-(async function testAPIDiscovery() {
-    console.log('%c🔍 API & Discovery Plugin Test', 'font-size: 20px; font-weight: bold; color: #0073aa;');
-    console.log('%cTesting plugin features...', 'color: #666; font-style: italic;');
-    console.log('─'.repeat(60));
-
+(function() {
+    'use strict';
+    
+    // Test results storage
     const results = {
-        passed: 0,
-        failed: 0,
-        tests: []
+        passed: [],
+        failed: [],
+        warnings: [],
+        info: []
     };
-
-    // Helper function to add test result
-    function addResult(name, status, message, details = '') {
-        results.tests.push({ name, status, message, details });
-        if (status === 'PASS') results.passed++;
-        if (status === 'FAIL') results.failed++;
-    }
-
-    // Helper function to check if element exists in HTML
-    function checkHeadElement(selector, shouldExist = false) {
-        const element = document.querySelector(selector);
-        return shouldExist ? element !== null : element === null;
-    }
-
-    // Test 1: REST API Frontend Links
-    console.log('\n%c📡 Test 1: REST API Frontend Links', 'font-weight: bold; color: #2271b1;');
-    const restLink = document.querySelector('link[rel="https://api.w.org/"]');
-    const restLinkAlternate = document.querySelector('link[href*="/wp-json/"]');
     
-    if (!restLink && !restLinkAlternate) {
-        addResult('REST API Links', 'PASS', 'REST API links removed from frontend', 
-            'If "Disable REST API (Frontend)" is enabled, this should pass');
-        console.log('✅ No REST API links found in HTML head');
+    // Styling for console output
+    const styles = {
+        title: 'font-size: 18px; font-weight: bold; color: #2271b1; padding: 10px 0;',
+        pass: 'color: #00a32a; font-weight: bold;',
+        fail: 'color: #d63638; font-weight: bold;',
+        warn: 'color: #dba617; font-weight: bold;',
+        info: 'color: #72aee6;',
+        section: 'font-size: 14px; font-weight: bold; color: #1d2327; margin-top: 10px;'
+    };
+    
+    console.log('%c🔧 Network & Performance Tweaks - Plugin Test', styles.title);
+    console.log('%cTesting plugin functionality...', styles.info);
+    console.log('─────────────────────────────────────────────────────────');
+    
+    // =====================================================================
+    // TEST 1: DNS Prefetch Disabled
+    // =====================================================================
+    console.log('%c\n📡 TEST 1: DNS Prefetch Settings', styles.section);
+    
+    // Check for dns-prefetch-control meta tag
+    const dnsPrefetchMeta = document.querySelector('meta[http-equiv="x-dns-prefetch-control"]');
+    if (dnsPrefetchMeta && dnsPrefetchMeta.getAttribute('content') === 'off') {
+        results.passed.push('✓ DNS prefetch control meta tag present and set to "off"');
+        console.log('%c  ✓ DNS prefetch control meta tag found', styles.pass);
     } else {
-        addResult('REST API Links', 'FAIL', 'REST API links still present', 
-            'Feature may be disabled or not working');
-        console.log('❌ REST API links found:', restLink || restLinkAlternate);
+        results.failed.push('✗ DNS prefetch control meta tag missing or incorrect');
+        console.log('%c  ✗ DNS prefetch control meta tag not found', styles.fail);
     }
-
-    // Test 2: XML-RPC Header
-    console.log('\n%c📡 Test 2: XML-RPC Availability', 'font-weight: bold; color: #2271b1;');
-    try {
-        const xmlrpcResponse = await fetch('/xmlrpc.php', { 
-            method: 'HEAD',
-            cache: 'no-cache'
+    
+    // Check for any dns-prefetch link tags
+    const dnsPrefetchLinks = document.querySelectorAll('link[rel="dns-prefetch"]');
+    if (dnsPrefetchLinks.length === 0) {
+        results.passed.push('✓ No DNS prefetch link tags found');
+        console.log('%c  ✓ No DNS prefetch links present', styles.pass);
+    } else {
+        results.warnings.push(`⚠ Found ${dnsPrefetchLinks.length} DNS prefetch link(s)`);
+        console.log('%c  ⚠ Found DNS prefetch links (may be added by theme/plugins):', styles.warn);
+        dnsPrefetchLinks.forEach(link => {
+            console.log('    - ' + link.href);
         });
-        const hasPingbackHeader = xmlrpcResponse.headers.get('X-Pingback');
-        
-        if (hasPingbackHeader) {
-            addResult('XML-RPC', 'FAIL', 'X-Pingback header present', 
-                `Header value: ${hasPingbackHeader}`);
-            console.log('❌ XML-RPC is active (X-Pingback header found)');
-        } else {
-            addResult('XML-RPC', 'PASS', 'X-Pingback header removed', 
-                'If "Disable XML-RPC" is enabled, this should pass');
-            console.log('✅ No X-Pingback header found');
+    }
+    
+    // =====================================================================
+    // TEST 2: Google Fonts Disabled
+    // =====================================================================
+    console.log('%c\n🔤 TEST 2: Google Fonts', styles.section);
+    
+    // Check stylesheets
+    const googleFontsStyles = Array.from(document.styleSheets).filter(sheet => {
+        try {
+            return sheet.href && sheet.href.includes('fonts.googleapis.com');
+        } catch(e) {
+            return false;
         }
-    } catch (error) {
-        addResult('XML-RPC', 'INFO', 'Could not test XML-RPC', error.message);
-        console.log('⚠️ Could not test XML-RPC:', error.message);
-    }
-
-    // Test 3: RSD Link
-    console.log('\n%c📡 Test 3: Really Simple Discovery (RSD)', 'font-weight: bold; color: #2271b1;');
-    const rsdLink = document.querySelector('link[rel="EditURI"]');
+    });
     
-    if (!rsdLink) {
-        addResult('RSD Link', 'PASS', 'RSD link removed from head', 
-            'If "Disable RSD" is enabled, this should pass');
-        console.log('✅ No RSD link found');
+    if (googleFontsStyles.length === 0) {
+        results.passed.push('✓ No Google Fonts stylesheets loaded');
+        console.log('%c  ✓ No Google Fonts detected', styles.pass);
     } else {
-        addResult('RSD Link', 'FAIL', 'RSD link still present', 
-            `Found: ${rsdLink.href}`);
-        console.log('❌ RSD link found:', rsdLink.href);
+        results.failed.push(`✗ Found ${googleFontsStyles.length} Google Fonts stylesheet(s)`);
+        console.log('%c  ✗ Google Fonts still loaded:', styles.fail);
+        googleFontsStyles.forEach(sheet => {
+            console.log('    - ' + sheet.href);
+        });
     }
-
-    // Test 4: Windows Live Writer Manifest
-    console.log('\n%c📡 Test 4: Windows Live Writer Manifest', 'font-weight: bold; color: #2271b1;');
-    const wlwLink = document.querySelector('link[rel="wlwmanifest"]');
     
-    if (!wlwLink) {
-        addResult('WLW Manifest', 'PASS', 'Windows Live Writer link removed', 
-            'If "Disable WLW" is enabled, this should pass');
-        console.log('✅ No Windows Live Writer link found');
-    } else {
-        addResult('WLW Manifest', 'FAIL', 'Windows Live Writer link still present', 
-            `Found: ${wlwLink.href}`);
-        console.log('❌ Windows Live Writer link found:', wlwLink.href);
+    // Check link tags
+    const googleFontsLinks = document.querySelectorAll('link[href*="fonts.googleapis.com"]');
+    if (googleFontsLinks.length > 0) {
+        results.warnings.push(`⚠ Found ${googleFontsLinks.length} Google Fonts link tag(s)`);
+        console.log('%c  ⚠ Google Fonts link tags found:', styles.warn);
+        googleFontsLinks.forEach(link => {
+            console.log('    - ' + link.href);
+        });
     }
-
-    // Test 5: Feed Links
-    console.log('\n%c📡 Test 5: RSS Feed Links', 'font-weight: bold; color: #2271b1;');
+    
+    // =====================================================================
+    // TEST 3: Google Maps Disabled
+    // =====================================================================
+    console.log('%c\n🗺️ TEST 3: Google Maps API', styles.section);
+    
+    const googleMapsScripts = Array.from(document.scripts).filter(script => {
+        return script.src && (
+            script.src.includes('maps.googleapis.com') || 
+            script.src.includes('maps.google.com')
+        );
+    });
+    
+    if (googleMapsScripts.length === 0) {
+        results.passed.push('✓ No Google Maps scripts loaded');
+        console.log('%c  ✓ No Google Maps scripts detected', styles.pass);
+    } else {
+        results.failed.push(`✗ Found ${googleMapsScripts.length} Google Maps script(s)`);
+        console.log('%c  ✗ Google Maps scripts still loaded:', styles.fail);
+        googleMapsScripts.forEach(script => {
+            console.log('    - ' + script.src);
+        });
+    }
+    
+    // =====================================================================
+    // TEST 4: Script/Style Version Parameters
+    // =====================================================================
+    console.log('%c\n🔢 TEST 4: Script/Style Version Parameters', styles.section);
+    
+    // Check scripts
+    const scriptsWithVer = Array.from(document.scripts).filter(script => {
+        return script.src && script.src.includes('?ver=');
+    });
+    
+    // Check stylesheets
+    const stylesWithVer = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).filter(link => {
+        return link.href && link.href.includes('?ver=');
+    });
+    
+    const totalWithVer = scriptsWithVer.length + stylesWithVer.length;
+    
+    if (totalWithVer === 0) {
+        results.passed.push('✓ All version parameters removed from scripts/styles');
+        console.log('%c  ✓ No version parameters found', styles.pass);
+    } else {
+        results.info.push(`ℹ Found ${scriptsWithVer.length} scripts and ${stylesWithVer.length} styles with version parameters`);
+        console.log('%c  ℹ Version parameters found (expected if setting disabled):', styles.info);
+        console.log(`    - ${scriptsWithVer.length} scripts with ?ver=`);
+        console.log(`    - ${stylesWithVer.length} styles with ?ver=`);
+    }
+    
+    // =====================================================================
+    // TEST 5: WordPress Version Hidden
+    // =====================================================================
+    console.log('%c\n🔒 TEST 5: WordPress Version Disclosure', styles.section);
+    
+    const generatorMeta = document.querySelector('meta[name="generator"]');
+    if (!generatorMeta || !generatorMeta.content.includes('WordPress')) {
+        results.passed.push('✓ WordPress version not disclosed in meta tags');
+        console.log('%c  ✓ Generator meta tag removed/hidden', styles.pass);
+    } else {
+        results.failed.push('✗ WordPress version exposed in generator meta tag');
+        console.log('%c  ✗ Generator meta tag still present:', styles.fail);
+        console.log('    - ' + generatorMeta.content);
+    }
+    
+    // =====================================================================
+    // TEST 6: RSS Feed Links
+    // =====================================================================
+    console.log('%c\n📰 TEST 6: RSS Feed Links', styles.section);
+    
     const feedLinks = document.querySelectorAll('link[type="application/rss+xml"], link[type="application/atom+xml"]');
     
     if (feedLinks.length === 0) {
-        addResult('Feed Links', 'PASS', 'Feed links removed from head', 
-            'If "Disable RSS Feed Links" is enabled, this should pass');
-        console.log('✅ No feed links found in HTML head');
+        results.passed.push('✓ No RSS feed links found');
+        console.log('%c  ✓ RSS feed links removed', styles.pass);
     } else {
-        addResult('Feed Links', 'FAIL', `${feedLinks.length} feed link(s) still present`, 
-            'Feature may be disabled or not working');
-        console.log(`❌ Found ${feedLinks.length} feed link(s):`, feedLinks);
-    }
-
-    // Test 6: Feed Accessibility
-    console.log('\n%c📡 Test 6: RSS Feed Accessibility', 'font-weight: bold; color: #2271b1;');
-    try {
-        const feedResponse = await fetch('/feed/', { 
-            method: 'GET',
-            cache: 'no-cache'
+        results.info.push(`ℹ Found ${feedLinks.length} RSS feed link(s)`);
+        console.log('%c  ℹ RSS feed links present (expected if setting disabled):', styles.info);
+        feedLinks.forEach(link => {
+            console.log('    - ' + link.title + ' (' + link.href + ')');
         });
-        
-        if (feedResponse.status === 410) {
-            addResult('Feeds Disabled', 'PASS', 'Feeds return 410 Gone status', 
-                'If "Disable RSS Feeds Completely" is enabled, this should pass');
-            console.log('✅ Feeds are completely disabled (410 Gone)');
-        } else if (feedResponse.ok) {
-            addResult('Feeds Disabled', 'FAIL', 'Feeds are still accessible', 
-                `Status: ${feedResponse.status}`);
-            console.log('❌ Feeds are still accessible');
-            
-            // Check feed generator
-            const feedText = await feedResponse.text();
-            if (feedText.includes('<generator>')) {
-                console.log('  ⚠️ Feed contains generator tag (WordPress version visible)');
-                addResult('Feed Generator', 'FAIL', 'Generator tag found in feed', 
-                    'WordPress version is exposed');
-            } else {
-                console.log('  ✅ No generator tag in feed');
-                addResult('Feed Generator', 'PASS', 'Generator tag removed from feed', 
-                    'If "Disable Feed Generator Tags" is enabled, this should pass');
-            }
-        }
-    } catch (error) {
-        addResult('Feeds Disabled', 'INFO', 'Could not test feed access', error.message);
-        console.log('⚠️ Could not test feed accessibility:', error.message);
     }
-
-    // Test 7: Database Table Exists
-    console.log('\n%c📡 Test 7: Plugin Database Table', 'font-weight: bold; color: #2271b1;');
-    console.log('⚠️ Cannot test database from frontend - check in phpMyAdmin');
-    console.log('   Table should be: wp_api_discovery_settings');
-    addResult('Database Table', 'INFO', 'Cannot verify from frontend', 
-        'Check for wp_api_discovery_settings table in database');
-
-    // Print Summary
-    console.log('\n' + '─'.repeat(60));
-    console.log('%c📊 Test Summary', 'font-size: 16px; font-weight: bold; color: #0073aa;');
-    console.log('─'.repeat(60));
     
-    results.tests.forEach(test => {
-        const icon = test.status === 'PASS' ? '✅' : 
-                     test.status === 'FAIL' ? '❌' : 
-                     '⚠️';
-        const color = test.status === 'PASS' ? '#46b450' : 
-                      test.status === 'FAIL' ? '#dc3232' : 
-                      '#ffb900';
-        
-        console.log(`${icon} %c${test.name}%c: ${test.message}`, 
-            `color: ${color}; font-weight: bold;`, 'color: inherit;');
-        
-        if (test.details) {
-            console.log(`   └─ ${test.details}`);
+    // =====================================================================
+    // TEST 7: Additional Meta Tags (RSD, WLW)
+    // =====================================================================
+    console.log('%c\n🏷️ TEST 7: Discovery Meta Tags', styles.section);
+    
+    const rsdLink = document.querySelector('link[rel="EditURI"]');
+    const wlwLink = document.querySelector('link[rel="wlwmanifest"]');
+    
+    let discoveryTagsFound = 0;
+    
+    if (!rsdLink) {
+        results.passed.push('✓ RSD link removed');
+        console.log('%c  ✓ RSD (EditURI) link not found', styles.pass);
+    } else {
+        results.info.push('ℹ RSD link present');
+        console.log('%c  ℹ RSD link found:', styles.info);
+        console.log('    - ' + rsdLink.href);
+        discoveryTagsFound++;
+    }
+    
+    if (!wlwLink) {
+        results.passed.push('✓ Windows Live Writer manifest removed');
+        console.log('%c  ✓ WLW manifest not found', styles.pass);
+    } else {
+        results.info.push('ℹ Windows Live Writer manifest present');
+        console.log('%c  ℹ WLW manifest found:', styles.info);
+        console.log('    - ' + wlwLink.href);
+        discoveryTagsFound++;
+    }
+    
+    // =====================================================================
+    // TEST 8: REST API Links
+    // =====================================================================
+    console.log('%c\n🔌 TEST 8: REST API Discovery', styles.section);
+    
+    const restApiLink = document.querySelector('link[rel="https://api.w.org/"]');
+    
+    if (!restApiLink) {
+        results.info.push('ℹ REST API link not found in head');
+        console.log('%c  ℹ REST API link removed from head', styles.info);
+    } else {
+        results.info.push('ℹ REST API link present in head');
+        console.log('%c  ℹ REST API link found:', styles.info);
+        console.log('    - ' + restApiLink.href);
+    }
+    
+    // =====================================================================
+    // TEST 9: Shortlink
+    // =====================================================================
+    console.log('%c\n🔗 TEST 9: Shortlink Tag', styles.section);
+    
+    const shortlink = document.querySelector('link[rel="shortlink"]');
+    
+    if (!shortlink) {
+        results.info.push('ℹ Shortlink tag not found');
+        console.log('%c  ℹ Shortlink tag not present', styles.info);
+    } else {
+        results.info.push('ℹ Shortlink tag present');
+        console.log('%c  ℹ Shortlink found:', styles.info);
+        console.log('    - ' + shortlink.href);
+    }
+    
+    // =====================================================================
+    // TEST 10: Check for External Resources
+    // =====================================================================
+    console.log('%c\n🌐 TEST 10: External Resources Summary', styles.section);
+    
+    const allScripts = Array.from(document.scripts);
+    const allStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+    
+    const currentDomain = window.location.hostname;
+    
+    const externalScripts = allScripts.filter(script => {
+        if (!script.src) return false;
+        try {
+            const url = new URL(script.src);
+            return url.hostname !== currentDomain;
+        } catch(e) {
+            return false;
         }
     });
+    
+    const externalStyles = allStyles.filter(link => {
+        if (!link.href) return false;
+        try {
+            const url = new URL(link.href);
+            return url.hostname !== currentDomain;
+        } catch(e) {
+            return false;
+        }
+    });
+    
+    console.log(`  📊 Resource Summary:`);
+    console.log(`    - Total Scripts: ${allScripts.filter(s => s.src).length}`);
+    console.log(`    - External Scripts: ${externalScripts.length}`);
+    console.log(`    - Total Styles: ${allStyles.length}`);
+    console.log(`    - External Styles: ${externalStyles.length}`);
+    
+    if (externalScripts.length > 0) {
+        console.log(`\n  External Scripts:`);
+        externalScripts.forEach(script => {
+            try {
+                const url = new URL(script.src);
+                console.log(`    - ${url.hostname}`);
+            } catch(e) {}
+        });
+    }
+    
+    if (externalStyles.length > 0) {
+        console.log(`\n  External Stylesheets:`);
+        externalStyles.forEach(link => {
+            try {
+                const url = new URL(link.href);
+                console.log(`    - ${url.hostname}`);
+            } catch(e) {}
+        });
+    }
+    
+    // =====================================================================
+    // FINAL SUMMARY
+    // =====================================================================
+    console.log('%c\n═══════════════════════════════════════════════════════', styles.section);
+    console.log('%c📊 TEST SUMMARY', styles.title);
+    console.log('%c═══════════════════════════════════════════════════════', styles.section);
+    
+    console.log(`%c\n✓ PASSED: ${results.passed.length}`, styles.pass);
+    results.passed.forEach(msg => console.log(`  ${msg}`));
+    
+    if (results.failed.length > 0) {
+        console.log(`%c\n✗ FAILED: ${results.failed.length}`, styles.fail);
+        results.failed.forEach(msg => console.log(`  ${msg}`));
+    }
+    
+    if (results.warnings.length > 0) {
+        console.log(`%c\n⚠ WARNINGS: ${results.warnings.length}`, styles.warn);
+        results.warnings.forEach(msg => console.log(`  ${msg}`));
+    }
+    
+    if (results.info.length > 0) {
+        console.log(`%c\nℹ INFO: ${results.info.length}`, styles.info);
+        results.info.forEach(msg => console.log(`  ${msg}`));
+    }
+    
+    // =====================================================================
+    // MANUAL TESTING INSTRUCTIONS
+    // =====================================================================
+    console.log('%c\n═══════════════════════════════════════════════════════', styles.section);
+    console.log('%c🔍 MANUAL TESTS REQUIRED', styles.title);
+    console.log('%c═══════════════════════════════════════════════════════', styles.section);
+    
+    console.log(`%c
+The following settings require manual verification:
 
-    console.log('\n' + '─'.repeat(60));
-    console.log(`%c✅ Passed: ${results.passed}  |  ❌ Failed: ${results.failed}  |  ⚠️ Info: ${results.tests.length - results.passed - results.failed}`, 
-        'font-weight: bold; font-size: 14px;');
-    console.log('─'.repeat(60));
+1. POST REVISIONS LIMIT
+   - Go to Posts → Edit any post
+   - Make 10+ changes and save each time
+   - Check: Tools → Revisions (should show only your configured limit)
 
-    // Final recommendations
-    console.log('\n%c💡 How to Interpret Results:', 'font-weight: bold; color: #2271b1;');
-    console.log('');
-    console.log('• PASS (✅) = Feature is working as expected (when enabled in settings)');
-    console.log('• FAIL (❌) = Feature is NOT working (check plugin settings)');
-    console.log('• INFO (⚠️) = Cannot verify this feature from browser console');
-    console.log('');
-    console.log('%cNote: Results depend on which features you enabled in plugin settings!', 'font-style: italic; color: #666;');
-    console.log('Go to: WordPress Admin → Tools → API & Discovery to enable/disable features');
-    console.log('');
-    console.log('%c✅ Test Complete!', 'font-size: 16px; font-weight: bold; color: #46b450;');
+2. EMPTY TRASH DAYS
+   - Trash a post
+   - Check database or wait for configured days
+   - Verify: Post is permanently deleted after X days
 
-    return results;
+3. AUTOSAVE FREQUENCY
+   - Edit a post and stop typing
+   - Watch for autosave notifications
+   - Check: Should autosave at your configured interval (default 60s)
+
+4. SELF PINGBACKS
+   - Create a post with a link to another post on your site
+   - Check: No pingback notification should appear
+
+5. SHORTCODE CLEANUP
+   - Add content with a fake shortcode like [nonexistent]
+   - View the post on frontend
+   - Check: Shortcode should be removed if cleanup is enabled
+
+6. HEARTBEAT FREQUENCY
+   - Open browser DevTools → Network tab
+   - Stay on WordPress admin for 2+ minutes
+   - Check: /admin-ajax.php?action=heartbeat calls at your interval
+
+7. DATABASE TABLE
+   - Check phpMyAdmin or similar
+   - Look for: wp_npt_settings table
+   - Should contain: All your plugin settings
+`, styles.info);
+    
+    console.log('%c\n═══════════════════════════════════════════════════════', styles.section);
+    console.log('%c✅ TESTING COMPLETE', styles.title);
+    console.log('%c═══════════════════════════════════════════════════════\n', styles.section);
+    
+    // Return summary object for programmatic access
+    return {
+        passed: results.passed.length,
+        failed: results.failed.length,
+        warnings: results.warnings.length,
+        info: results.info.length,
+        details: results
+    };
 })();
