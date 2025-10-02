@@ -43,23 +43,46 @@ class NPT_Database {
 	/**
 	 * Create custom database table
 	 *
-	 * @return void
+	 * @return bool|WP_Error True on success, WP_Error on failure
 	 */
 	public function create_table() {
 		global $wpdb;
 		
 		$charset_collate = $wpdb->get_charset_collate();
 		
-		$sql = "CREATE TABLE IF NOT EXISTS {$this->table_name} (
-			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-			setting_key varchar(191) NOT NULL,
-			setting_value longtext,
-			PRIMARY KEY (id),
-			UNIQUE KEY setting_key (setting_key)
-		) $charset_collate;";
+		// Use prepared statement with %i placeholder for table name (WordPress 6.2+)
+		$sql = $wpdb->prepare(
+			"CREATE TABLE IF NOT EXISTS %i (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				setting_key varchar(191) NOT NULL,
+				setting_value longtext,
+				PRIMARY KEY (id),
+				UNIQUE KEY setting_key (setting_key)
+			) %s",
+			$this->table_name,
+			$charset_collate
+		);
 		
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
+		
+		// Verify table was created successfully
+		$table_exists = $wpdb->get_var(
+			$wpdb->prepare(
+				"SHOW TABLES LIKE %s",
+				$this->table_name
+			)
+		);
+		
+		if ( $this->table_name !== $table_exists ) {
+			error_log( 'NPT: Failed to create database table - ' . $wpdb->last_error );
+			return new WP_Error(
+				'table_creation_failed',
+				__( 'Failed to create database table', 'network-performance-tweaks' )
+			);
+		}
+		
+		return true;
 	}
 
 	/**
@@ -82,7 +105,14 @@ class NPT_Database {
 		);
 		
 		foreach ( $defaults as $key => $value ) {
-			$this->update_setting( $key, $value );
+			// Check if setting already exists
+			$existing = $this->get_setting( $key );
+			if ( false === $existing ) {
+				$result = $this->update_setting( $key, $value );
+				if ( is_wp_error( $result ) ) {
+					error_log( 'NPT: Failed to set default for ' . $key . ' - ' . $result->get_error_message() );
+				}
+			}
 		}
 	}
 
@@ -94,10 +124,12 @@ class NPT_Database {
 	 * @return mixed
 	 */
 	public function get_setting( $key, $default = false ) {
+		// Load all settings if not cached
 		if ( null === $this->settings_cache ) {
 			$this->load_all_settings();
 		}
 		
+		// Return from cache
 		return isset( $this->settings_cache[ $key ] ) ? $this->settings_cache[ $key ] : $default;
 	}
 
@@ -106,26 +138,49 @@ class NPT_Database {
 	 *
 	 * @param string $key Setting key.
 	 * @param mixed  $value Setting value.
-	 * @return bool
+	 * @return bool|WP_Error Success or error
 	 */
 	public function update_setting( $key, $value ) {
 		global $wpdb;
 		
-		$result = $wpdb->replace(
-			$this->table_name,
-			array(
-				'setting_key' => $key,
-				'setting_value' => $value,
-			),
-			array( '%s', '%s' )
-		);
-		
-		if ( false !== $result ) {
-			$this->settings_cache[ $key ] = $value;
-			return true;
+		// Validate key and value
+		if ( empty( $key ) || ! is_string( $key ) ) {
+			return new WP_Error(
+				'invalid_key',
+				__( 'Invalid setting key', 'network-performance-tweaks' )
+			);
 		}
 		
-		return false;
+		// Use prepared statement with %i placeholder for table name
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"REPLACE INTO %i (setting_key, setting_value) VALUES (%s, %s)",
+				$this->table_name,
+				$key,
+				$value
+			)
+		);
+		
+		if ( false === $result ) {
+			error_log( 'NPT DB Error: ' . $wpdb->last_error );
+			return new WP_Error(
+				'db_error',
+				__( 'Failed to save setting', 'network-performance-tweaks' )
+			);
+		}
+		
+		// Update cache
+		if ( null !== $this->settings_cache ) {
+			$this->settings_cache[ $key ] = $value;
+		}
+		
+		// Clear transient cache
+		delete_transient( 'npt_settings_cache' );
+		
+		// Clear object cache
+		wp_cache_delete( 'npt_settings_all', 'npt' );
+		
+		return true;
 	}
 
 	/**
@@ -136,32 +191,64 @@ class NPT_Database {
 	private function load_all_settings() {
 		global $wpdb;
 		
+		// Try object cache first
+		$cached = wp_cache_get( 'npt_settings_all', 'npt' );
+		if ( false !== $cached && is_array( $cached ) ) {
+			$this->settings_cache = $cached;
+			return;
+		}
+		
+		// Use prepared statement with %i placeholder for table name
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT setting_key, setting_value FROM {$this->table_name} WHERE 1=%d",
-				1
+				"SELECT setting_key, setting_value FROM %i",
+				$this->table_name
 			),
 			ARRAY_A
 		);
 		
+		if ( null === $results ) {
+			error_log( 'NPT: Failed to load settings - ' . $wpdb->last_error );
+			$this->settings_cache = array();
+			return;
+		}
+		
 		$this->settings_cache = array();
 		
-		if ( $results ) {
+		if ( is_array( $results ) ) {
 			foreach ( $results as $row ) {
-				$this->settings_cache[ $row['setting_key'] ] = $row['setting_value'];
+				if ( isset( $row['setting_key'] ) && isset( $row['setting_value'] ) ) {
+					$this->settings_cache[ $row['setting_key'] ] = $row['setting_value'];
+				}
 			}
 		}
+		
+		// Store in object cache
+		wp_cache_set( 'npt_settings_all', $this->settings_cache, 'npt', 12 * HOUR_IN_SECONDS );
 	}
 
 	/**
 	 * Drop custom table
 	 *
-	 * @return void
+	 * @return bool Success status
 	 */
 	public function drop_table() {
 		global $wpdb;
 		
-		$wpdb->query( $wpdb->prepare( "DROP TABLE IF EXISTS %i", $this->table_name ) );
+		// Use prepared statement with %i placeholder
+		$result = $wpdb->query(
+			$wpdb->prepare(
+				"DROP TABLE IF EXISTS %i",
+				$this->table_name
+			)
+		);
+		
+		if ( false === $result ) {
+			error_log( 'NPT: Failed to drop table - ' . $wpdb->last_error );
+			return false;
+		}
+		
+		return true;
 	}
 
 	/**
