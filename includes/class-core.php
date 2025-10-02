@@ -63,9 +63,23 @@ class NPT_Core {
 			add_filter( 'style_loader_tag', array( $this, 'filter_google_fonts' ), 10, 2 );
 		}
 
-		// NOTE: WordPress constants (WP_POST_REVISIONS, EMPTY_TRASH_DAYS, AUTOSAVE_INTERVAL)
-		// are now defined in the main plugin file before plugins_loaded hook
-		// This ensures WordPress reads them during early initialization
+		// Post Revisions
+		$revisions = $this->database->get_setting( 'post_revisions_limit', '5' );
+		if ( ! defined( 'WP_POST_REVISIONS' ) && is_numeric( $revisions ) ) {
+			define( 'WP_POST_REVISIONS', (int) $revisions );
+		}
+
+		// Empty Trash Days
+		$trash_days = $this->database->get_setting( 'empty_trash_days', '30' );
+		if ( ! defined( 'EMPTY_TRASH_DAYS' ) && is_numeric( $trash_days ) ) {
+			define( 'EMPTY_TRASH_DAYS', (int) $trash_days );
+		}
+
+		// Autosave Frequency
+		$autosave = $this->database->get_setting( 'autosave_frequency', '60' );
+		if ( ! defined( 'AUTOSAVE_INTERVAL' ) && is_numeric( $autosave ) ) {
+			define( 'AUTOSAVE_INTERVAL', (int) $autosave );
+		}
 
 		// Shortcode Cleanup
 		if ( '1' === $this->database->get_setting( 'enable_shortcode_cleanup' ) ) {

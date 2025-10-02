@@ -23,36 +23,23 @@ if ( '1' === $cleanup ) {
 	// Drop custom table
 	$database->drop_table();
 	
-	// Clear any transients using prepared statements with %i placeholder
+	// Clear any transients
 	global $wpdb;
-	
-	// Delete transient options
-	$result = $wpdb->query(
+	$wpdb->query(
 		$wpdb->prepare(
-			"DELETE FROM %i 
+			"DELETE FROM {$wpdb->options} 
 			WHERE option_name LIKE %s",
-			$wpdb->options,
 			$wpdb->esc_like( '_transient_npt_' ) . '%'
 		)
 	);
 	
-	if ( false === $result ) {
-		error_log( 'NPT Uninstall: Failed to delete transients - ' . $wpdb->last_error );
-	}
-	
-	// Delete transient timeout options
-	$result = $wpdb->query(
+	$wpdb->query(
 		$wpdb->prepare(
-			"DELETE FROM %i 
+			"DELETE FROM {$wpdb->options} 
 			WHERE option_name LIKE %s",
-			$wpdb->options,
 			$wpdb->esc_like( '_transient_timeout_npt_' ) . '%'
 		)
 	);
-	
-	if ( false === $result ) {
-		error_log( 'NPT Uninstall: Failed to delete transient timeouts - ' . $wpdb->last_error );
-	}
 	
 	// Clear object cache
 	wp_cache_flush();
